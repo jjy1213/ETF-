@@ -6,6 +6,11 @@ def calculate_moving_average(prices: pd.DataFrame, window_days: int) -> pd.DataF
     return prices.rolling(window=window_days).mean()
 
 
+def calculate_momentum(prices: pd.DataFrame, lookback_days: int) -> pd.DataFrame:
+    """计算给定回看期的价格动量。"""
+    return prices.pct_change(periods=lookback_days)
+
+
 def get_month_end_trading_days(prices: pd.DataFrame) -> pd.DatetimeIndex:
     """找出每个月的最后一个交易日，并避免把未结束的当月误判为月末。"""
     months = prices.index.to_period("M")
@@ -55,3 +60,31 @@ def generate_rebalance_signals(
             signals.loc[date] = cash
 
     return signals
+
+
+def generate_rotation_rebalance_weights(
+    prices: pd.DataFrame,
+    moving_average: pd.DataFrame,
+    momentum: pd.DataFrame,
+    top_n: int,
+) -> pd.DataFrame:
+    """在月末选择站上均线且动量最高的 ETF，生成等权目标权重。"""
+    month_end_dates = get_month_end_trading_days(prices)
+    weights = pd.DataFrame(0.0, index=month_end_dates, columns=prices.columns)
+    weights.index.name = "Date"
+
+    for date in month_end_dates:
+        trend_filter = prices.loc[date] >= moving_average.loc[date]
+        valid_momentum = momentum.loc[date].dropna()
+        eligible_assets = valid_momentum[
+            trend_filter.reindex(valid_momentum.index).fillna(False)
+            & (valid_momentum > 0)
+        ]
+
+        selected_assets = eligible_assets.sort_values(ascending=False).head(top_n).index
+        if len(selected_assets) == 0:
+            continue
+
+        weights.loc[date, selected_assets] = 1.0 / len(selected_assets)
+
+    return weights

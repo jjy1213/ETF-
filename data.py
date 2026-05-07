@@ -136,9 +136,19 @@ def save_outputs(
     strategy_result.to_csv(output_dir / "strategy_result.csv", index_label="Date")
     signal_columns = [
         column
-        for column in ("rebalance_signal", "position", "position_weight")
+        for column in (
+            "rebalance_signal",
+            "position",
+            "position_weight",
+            "gross_exposure",
+            "turnover",
+            "transaction_cost",
+        )
         if column in strategy_result
     ]
+    signal_columns.extend(
+        column for column in strategy_result.columns if column.startswith("weight_")
+    )
     strategy_result[signal_columns].to_csv(
         output_dir / "signals.csv",
         index_label="Date",
