@@ -1,9 +1,13 @@
 from pathlib import Path
 
-from backtest import calculate_strategy_equity, plot_equity_curve
+from backtest import (
+    calculate_volatility_managed_strategy_equity,
+    plot_comparison_equity_curve,
+)
 from data import download_price_data, save_outputs
 from metrics import calculate_annual_returns, calculate_performance_summary, print_summary
-from report import generate_report
+from report import build_buy_hold_series, generate_report
+from sensitivity import save_volatility_sensitivity
 from strategy import calculate_moving_average, generate_rebalance_signals
 
 
@@ -15,6 +19,9 @@ CASH = "CASH"
 START_DATE = "2010-01-01"
 END_DATE = None  # None 表示下载到最近一个交易日
 MOVING_AVERAGE_DAYS = 200
+TARGET_VOLATILITY = 0.10
+VOLATILITY_LOOKBACK_DAYS = 20
+MAX_POSITION_WEIGHT = 1.0
 INITIAL_CAPITAL = 1.0
 TRADING_DAYS_PER_YEAR = 252
 OUTPUT_DIR = Path("outputs")
@@ -36,11 +43,15 @@ def main() -> None:
         DEFENSIVE_ASSET,
         CASH,
     )
-    strategy_result = calculate_strategy_equity(
+    strategy_result = calculate_volatility_managed_strategy_equity(
         prices,
         rebalance_signals,
         INITIAL_CAPITAL,
         CASH,
+        TARGET_VOLATILITY,
+        VOLATILITY_LOOKBACK_DAYS,
+        TRADING_DAYS_PER_YEAR,
+        MAX_POSITION_WEIGHT,
     )
     annual_returns = calculate_annual_returns(strategy_result, INITIAL_CAPITAL)
     performance_summary = calculate_performance_summary(
@@ -58,7 +69,12 @@ def main() -> None:
         annual_returns,
         performance_summary,
     )
-    plot_equity_curve(strategy_result["strategy_equity"], OUTPUT_DIR / "equity_curve.png")
+    _, benchmark_equity = build_buy_hold_series(prices, RISK_ASSET, INITIAL_CAPITAL)
+    plot_comparison_equity_curve(
+        strategy_result["strategy_equity"],
+        benchmark_equity,
+        OUTPUT_DIR / "equity_curve.png",
+    )
     generate_report(
         strategy_result,
         prices,
@@ -66,6 +82,15 @@ def main() -> None:
         RISK_ASSET,
         INITIAL_CAPITAL,
         TRADING_DAYS_PER_YEAR,
+    )
+    save_volatility_sensitivity(
+        prices,
+        rebalance_signals,
+        OUTPUT_DIR,
+        INITIAL_CAPITAL,
+        CASH,
+        TRADING_DAYS_PER_YEAR,
+        MAX_POSITION_WEIGHT,
     )
     print_summary(str(OUTPUT_DIR.resolve()), annual_returns, performance_summary)
 

@@ -59,7 +59,7 @@ def print_summary(
     performance_summary: pd.Series,
 ) -> None:
     """在终端打印简要结果。"""
-    print("月末 200MA 风险过滤策略回测完成")
+    print("月末 200MA 波动率仓位管理策略回测完成")
     print(f"最新持仓信号: {performance_summary['latest_position']}")
     print(f"最终资金曲线值: {performance_summary['final_equity']:.4f}")
     print(f"累计收益率: {performance_summary['total_return']:.2%}")
