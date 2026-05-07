@@ -66,3 +66,7 @@ python3 main.py
 ```
 
 运行后，终端会输出最新持仓信号、最终资金曲线值、累计收益率、最大回撤、Sharpe Ratio 和每年收益率，结果文件会保存到 `outputs/` 目录，并自动生成策略 vs QQQ 买入持有的对比报告。
+
+## 数据源容错
+
+项目优先使用 Yahoo Finance 下载价格数据。如果 Yahoo Finance 因限流或网络问题返回空数据，程序会自动尝试 Stooq CSV 备用数据源；如果在线数据源都失败，并且本地已有 `outputs/prices.csv`，程序会读取本地缓存继续运行。

@@ -22,7 +22,12 @@ OUTPUT_DIR = Path("outputs")
 
 def main() -> None:
     """主流程：下载数据 -> 计算均线 -> 月末调仓 -> 回测 -> 输出绩效。"""
-    prices = download_price_data(TICKERS, START_DATE, END_DATE)
+    prices = download_price_data(
+        TICKERS,
+        START_DATE,
+        END_DATE,
+        cache_path=OUTPUT_DIR / "prices.csv",
+    )
     moving_average = calculate_moving_average(prices, MOVING_AVERAGE_DAYS)
     rebalance_signals = generate_rebalance_signals(
         prices,
