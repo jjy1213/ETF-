@@ -6,7 +6,11 @@
 
 ```text
 .
-├── main.py              # 策略主程序：下载数据、计算均线、月末调仓、回测并绘图
+├── main.py              # 主流程控制：串联数据、策略、回测、绩效和输出
+├── data.py              # 数据模块：下载价格数据、保存输出文件
+├── strategy.py          # 策略模块：计算均线、识别月末交易日、生成调仓信号
+├── backtest.py          # 回测模块：生成每日持仓、计算收益和资金曲线、绘图
+├── metrics.py           # 绩效模块：计算年度收益、最大回撤和 Sharpe Ratio
 ├── requirements.txt     # Python 依赖列表
 ├── README.md            # 项目说明文档
 └── outputs/             # 运行 main.py 后自动生成，保存研究结果
@@ -22,7 +26,11 @@
 
 ## 每个文件的作用
 
-- `main.py`：项目核心代码，使用函数拆分量化研究流程，包含中文注释，便于逐步理解。
+- `main.py`：只负责流程控制，按顺序调用各模块完成完整研究流程。
+- `data.py`：负责使用 `yfinance` 下载 ETF 价格数据，并保存 CSV 输出文件。
+- `strategy.py`：负责计算 200 日均线、识别月末交易日，并生成月末调仓信号。
+- `backtest.py`：负责把月末信号转换为每日持仓，计算策略收益、资金曲线并绘图。
+- `metrics.py`：负责计算每年收益率、最大回撤、Sharpe Ratio，并打印绩效摘要。
 - `requirements.txt`：记录运行项目所需的第三方库，包括 `yfinance`、`pandas` 和 `matplotlib`。
 - `README.md`：说明项目目标、目录结构、运行方式和输出结果。
 - `outputs/prices.csv`：保存 QQQ 和 TLT 的历史复权收盘价。
