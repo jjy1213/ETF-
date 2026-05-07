@@ -7,12 +7,12 @@ Python CLI tool for ETF monthly 200-day moving average backtesting (QQQ/TLT). Se
 ### Quick reference
 
 - **Install deps:** `pip install -r requirements.txt`
-- **Run:** `python3 main.py` — downloads live data from Yahoo Finance, runs backtest, prints results, and writes CSV/PNG to `outputs/`.
+- **Run:** `python3 main.py` — downloads live data, runs backtest, prints results, and writes CSV/PNG/TXT to `outputs/`.
 - **Python ≥ 3.10** required (uses `str | None` union syntax).
 - **No tests, no linter, no build system** in the current codebase.
 
 ### Caveats
 
-- Requires internet access to Yahoo Finance (`query1.finance.yahoo.com`). Will raise `ValueError` if data download fails.
+- Data download tries Yahoo Finance first, then `outputs/prices.csv` as a local cache, then bundled `sample_data/prices.csv`.
 - `matplotlib` uses the non-interactive `Agg` backend by default in headless environments — no display needed.
 - The `outputs/` directory is created automatically and old files are wiped on each run.

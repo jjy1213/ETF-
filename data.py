@@ -4,8 +4,37 @@ import pandas as pd
 import yfinance as yf
 
 
-def download_price_data(tickers: list[str], start: str, end: str | None = None) -> pd.DataFrame:
-    """使用 yfinance 下载 ETF 的复权收盘价。"""
+SAMPLE_PRICE_DATA_PATH = Path(__file__).resolve().parent / "sample_data" / "prices.csv"
+
+
+class PriceDownloadError(RuntimeError):
+    """价格数据下载失败。"""
+
+
+def normalize_price_data(prices: pd.Series | pd.DataFrame, tickers: list[str]) -> pd.DataFrame:
+    """统一价格数据格式，并确认所有标的都有数据。"""
+    if isinstance(prices, pd.Series):
+        prices = prices.to_frame(name=tickers[0])
+
+    normalized = prices.reindex(columns=tickers).dropna(how="all")
+    missing_tickers = [
+        ticker
+        for ticker in tickers
+        if ticker not in normalized or normalized[ticker].dropna().empty
+    ]
+    if normalized.empty or missing_tickers:
+        missing_text = ", ".join(missing_tickers) if missing_tickers else "全部标的"
+        raise PriceDownloadError(f"价格数据缺失: {missing_text}")
+
+    return normalized
+
+
+def download_yahoo_price_data(
+    tickers: list[str],
+    start: str,
+    end: str | None = None,
+) -> pd.DataFrame:
+    """使用 Yahoo Finance 下载 ETF 的复权收盘价。"""
     data = yf.download(
         tickers=tickers,
         start=start,
@@ -15,15 +44,73 @@ def download_price_data(tickers: list[str], start: str, end: str | None = None) 
     )
 
     if data.empty:
-        raise ValueError("没有下载到数据，请检查网络连接、代码或日期范围。")
+        raise PriceDownloadError("Yahoo Finance 返回空数据。")
 
     close_prices = data["Close"].copy()
+    return normalize_price_data(close_prices, tickers)
 
-    # 当只下载一个标的时，yfinance 可能返回 Series，这里统一成 DataFrame。
-    if isinstance(close_prices, pd.Series):
-        close_prices = close_prices.to_frame(name=tickers[0])
 
-    return close_prices.dropna(how="all")
+def load_cached_price_data(
+    cache_path: Path,
+    tickers: list[str],
+    start: str,
+    end: str | None = None,
+) -> pd.DataFrame:
+    """从本地缓存读取价格数据。"""
+    if not cache_path.exists():
+        raise PriceDownloadError(f"本地缓存不存在: {cache_path}")
+
+    prices = pd.read_csv(cache_path, index_col="Date", parse_dates=True)
+    prices = normalize_price_data(prices, tickers)
+    prices = prices.loc[prices.index >= pd.Timestamp(start)]
+    if end is not None:
+        prices = prices.loc[prices.index <= pd.Timestamp(end)]
+
+    return normalize_price_data(prices, tickers)
+
+
+def load_bundled_sample_price_data(
+    tickers: list[str],
+    start: str,
+    end: str | None = None,
+) -> pd.DataFrame:
+    """读取仓库内置样例价格数据，保证离线或限流时仍可运行。"""
+    return load_cached_price_data(SAMPLE_PRICE_DATA_PATH, tickers, start, end)
+
+
+def download_price_data(
+    tickers: list[str],
+    start: str,
+    end: str | None = None,
+    cache_path: Path | None = None,
+) -> pd.DataFrame:
+    """下载价格数据：优先 Yahoo，失败后尝试本地缓存和内置样例数据。"""
+    errors: list[str] = []
+
+    try:
+        prices = download_yahoo_price_data(tickers, start, end)
+        print("价格数据来源: Yahoo Finance")
+        return prices
+    except Exception as error:
+        errors.append(f"Yahoo Finance: {error}")
+
+    if cache_path is not None:
+        try:
+            prices = load_cached_price_data(cache_path, tickers, start, end)
+            print(f"价格数据来源: 本地缓存 {cache_path}")
+            return prices
+        except Exception as error:
+            errors.append(f"本地缓存: {error}")
+
+    try:
+        prices = load_bundled_sample_price_data(tickers, start, end)
+        print(f"价格数据来源: 内置样例数据 {SAMPLE_PRICE_DATA_PATH}")
+        return prices
+    except Exception as error:
+        errors.append(f"内置样例数据: {error}")
+
+    detail = "；".join(errors)
+    raise ValueError(f"没有下载到数据，也没有可用的本地数据。失败原因：{detail}")
 
 
 def save_outputs(

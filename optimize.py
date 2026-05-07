@@ -161,7 +161,12 @@ def plot_sharpe_heatmap(results: pd.DataFrame, output_path: Path) -> None:
 
 def main() -> None:
     """下载数据、执行网格搜索并保存 Sharpe 热力图。"""
-    prices = download_price_data(TICKERS, START_DATE, END_DATE)
+    prices = download_price_data(
+        TICKERS,
+        START_DATE,
+        END_DATE,
+        cache_path=OUTPUT_DIR / "prices.csv",
+    )
     results = run_grid_search(prices)
 
     OUTPUT_DIR.mkdir(exist_ok=True)
