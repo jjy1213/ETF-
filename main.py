@@ -3,6 +3,7 @@ from pathlib import Path
 from backtest import calculate_strategy_equity, plot_equity_curve
 from data import download_price_data, save_outputs
 from metrics import calculate_annual_returns, calculate_performance_summary, print_summary
+from report import generate_report
 from strategy import calculate_moving_average, generate_rebalance_signals
 
 
@@ -53,6 +54,14 @@ def main() -> None:
         performance_summary,
     )
     plot_equity_curve(strategy_result["strategy_equity"], OUTPUT_DIR / "equity_curve.png")
+    generate_report(
+        strategy_result,
+        prices,
+        OUTPUT_DIR,
+        RISK_ASSET,
+        INITIAL_CAPITAL,
+        TRADING_DAYS_PER_YEAR,
+    )
     print_summary(str(OUTPUT_DIR.resolve()), annual_returns, performance_summary)
 
 
