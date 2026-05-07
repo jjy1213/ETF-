@@ -39,8 +39,8 @@
 ## 如何运行
 
 ```bash
-pip install -r requirements.txt
-python main.py
+python3 -m pip install -r requirements.txt
+python3 main.py
 ```
 
 运行后，终端会输出最新持仓信号、最终资金曲线值和累计收益率，结果文件会保存到 `outputs/` 目录。
