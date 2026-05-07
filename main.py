@@ -211,11 +211,14 @@ def save_outputs(
         if old_file.is_file():
             old_file.unlink()
 
-    prices.to_csv(OUTPUT_DIR / "prices.csv")
-    moving_average.to_csv(OUTPUT_DIR / "moving_average.csv")
-    rebalance_signals.to_csv(OUTPUT_DIR / "rebalance_signals.csv")
-    strategy_result.to_csv(OUTPUT_DIR / "strategy_result.csv")
-    strategy_result[["rebalance_signal", "position"]].to_csv(OUTPUT_DIR / "signals.csv")
+    prices.to_csv(OUTPUT_DIR / "prices.csv", index_label="Date")
+    moving_average.to_csv(OUTPUT_DIR / "moving_average.csv", index_label="Date")
+    rebalance_signals.to_csv(OUTPUT_DIR / "rebalance_signals.csv", index_label="Date")
+    strategy_result.to_csv(OUTPUT_DIR / "strategy_result.csv", index_label="Date")
+    strategy_result[["rebalance_signal", "position"]].to_csv(
+        OUTPUT_DIR / "signals.csv",
+        index_label="Date",
+    )
     annual_returns.to_csv(OUTPUT_DIR / "annual_returns.csv")
     performance_summary.to_csv(OUTPUT_DIR / "performance_summary.csv")
     plot_equity_curve(strategy_result["strategy_equity"], OUTPUT_DIR / "equity_curve.png")
