@@ -134,7 +134,12 @@ def save_outputs(
     moving_average.to_csv(output_dir / "moving_average.csv", index_label="Date")
     rebalance_signals.to_csv(output_dir / "rebalance_signals.csv", index_label="Date")
     strategy_result.to_csv(output_dir / "strategy_result.csv", index_label="Date")
-    strategy_result[["rebalance_signal", "position"]].to_csv(
+    signal_columns = [
+        column
+        for column in ("rebalance_signal", "position", "position_weight")
+        if column in strategy_result
+    ]
+    strategy_result[signal_columns].to_csv(
         output_dir / "signals.csv",
         index_label="Date",
     )
