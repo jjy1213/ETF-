@@ -1,27 +1,36 @@
 from pathlib import Path
 
 from backtest import (
-    calculate_volatility_managed_strategy_equity,
+    calculate_rotation_strategy_equity,
     plot_comparison_equity_curve,
 )
 from data import download_price_data, save_outputs
+from diagnostics import save_rolling_sharpe, save_walk_forward_report
 from metrics import calculate_annual_returns, calculate_performance_summary, print_summary
 from report import build_buy_hold_series, generate_report
 from sensitivity import save_volatility_sensitivity
-from strategy import calculate_moving_average, generate_rebalance_signals
+from strategy import (
+    calculate_momentum,
+    calculate_moving_average,
+    generate_rotation_rebalance_weights,
+)
 
 
 # 策略参数：保持集中，方便初学者修改
-TICKERS = ["QQQ", "TLT"]
+TICKERS = ["SPY", "QQQ", "IWM", "EFA", "EEM", "TLT", "GLD"]
 RISK_ASSET = "QQQ"
-DEFENSIVE_ASSET = "TLT"
 CASH = "CASH"
 START_DATE = "2010-01-01"
 END_DATE = None  # None 表示下载到最近一个交易日
 MOVING_AVERAGE_DAYS = 200
+MOMENTUM_LOOKBACK_DAYS = 126
+ROTATION_TOP_N = 3
 TARGET_VOLATILITY = 0.10
 VOLATILITY_LOOKBACK_DAYS = 20
 MAX_POSITION_WEIGHT = 1.0
+TRANSACTION_COST_BPS = 5.0
+ROLLING_SHARPE_DAYS = 252
+WALK_FORWARD_MIN_TRAIN_YEARS = 3
 INITIAL_CAPITAL = 1.0
 TRADING_DAYS_PER_YEAR = 252
 OUTPUT_DIR = Path("outputs")
@@ -36,22 +45,23 @@ def main() -> None:
         cache_path=OUTPUT_DIR / "prices.csv",
     )
     moving_average = calculate_moving_average(prices, MOVING_AVERAGE_DAYS)
-    rebalance_signals = generate_rebalance_signals(
+    momentum = calculate_momentum(prices, MOMENTUM_LOOKBACK_DAYS)
+    rebalance_weights = generate_rotation_rebalance_weights(
         prices,
         moving_average,
-        RISK_ASSET,
-        DEFENSIVE_ASSET,
-        CASH,
+        momentum,
+        ROTATION_TOP_N,
     )
-    strategy_result = calculate_volatility_managed_strategy_equity(
+    strategy_result = calculate_rotation_strategy_equity(
         prices,
-        rebalance_signals,
+        rebalance_weights,
         INITIAL_CAPITAL,
         CASH,
         TARGET_VOLATILITY,
         VOLATILITY_LOOKBACK_DAYS,
         TRADING_DAYS_PER_YEAR,
         MAX_POSITION_WEIGHT,
+        TRANSACTION_COST_BPS,
     )
     annual_returns = calculate_annual_returns(strategy_result, INITIAL_CAPITAL)
     performance_summary = calculate_performance_summary(
@@ -64,7 +74,7 @@ def main() -> None:
         OUTPUT_DIR,
         prices,
         moving_average,
-        rebalance_signals,
+        rebalance_weights,
         strategy_result,
         annual_returns,
         performance_summary,
@@ -85,12 +95,26 @@ def main() -> None:
     )
     save_volatility_sensitivity(
         prices,
-        rebalance_signals,
+        rebalance_weights,
         OUTPUT_DIR,
         INITIAL_CAPITAL,
         CASH,
         TRADING_DAYS_PER_YEAR,
         MAX_POSITION_WEIGHT,
+        TRANSACTION_COST_BPS,
+    )
+    save_rolling_sharpe(
+        strategy_result["strategy_return"],
+        OUTPUT_DIR,
+        ROLLING_SHARPE_DAYS,
+        TRADING_DAYS_PER_YEAR,
+    )
+    save_walk_forward_report(
+        strategy_result,
+        OUTPUT_DIR,
+        INITIAL_CAPITAL,
+        TRADING_DAYS_PER_YEAR,
+        WALK_FORWARD_MIN_TRAIN_YEARS,
     )
     print_summary(str(OUTPUT_DIR.resolve()), annual_returns, performance_summary)
 

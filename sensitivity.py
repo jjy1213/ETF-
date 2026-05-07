@@ -7,7 +7,7 @@ matplotlib.use("Agg")
 import matplotlib.pyplot as plt
 import pandas as pd
 
-from backtest import calculate_volatility_managed_strategy_equity
+from backtest import calculate_rotation_strategy_equity
 from metrics import calculate_performance_summary
 
 
@@ -20,26 +20,28 @@ DRAWDOWN_HEATMAP_NAME = "volatility_sensitivity_drawdown.png"
 
 def run_volatility_sensitivity(
     prices: pd.DataFrame,
-    rebalance_signals: pd.Series,
+    rebalance_weights: pd.DataFrame,
     initial_capital: float,
     cash: str,
     trading_days_per_year: int,
     max_position_weight: float,
+    transaction_cost_bps: float,
 ) -> pd.DataFrame:
     """用固定网格评估波动率仓位参数敏感性。"""
     records: list[dict[str, float | int]] = []
 
     for volatility_lookback_days in VOLATILITY_LOOKBACK_GRID:
         for target_volatility in TARGET_VOLATILITY_GRID:
-            strategy_result = calculate_volatility_managed_strategy_equity(
+            strategy_result = calculate_rotation_strategy_equity(
                 prices,
-                rebalance_signals,
+                rebalance_weights,
                 initial_capital,
                 cash,
                 target_volatility,
                 volatility_lookback_days,
                 trading_days_per_year,
                 max_position_weight,
+                transaction_cost_bps,
             )
             summary = calculate_performance_summary(
                 strategy_result,
@@ -106,22 +108,24 @@ def plot_sensitivity_heatmap(
 
 def save_volatility_sensitivity(
     prices: pd.DataFrame,
-    rebalance_signals: pd.Series,
+    rebalance_weights: pd.DataFrame,
     output_dir: Path,
     initial_capital: float,
     cash: str,
     trading_days_per_year: int,
     max_position_weight: float,
+    transaction_cost_bps: float,
 ) -> pd.DataFrame:
     """保存波动率参数敏感性 CSV 和热力图。"""
     output_dir.mkdir(exist_ok=True)
     results = run_volatility_sensitivity(
         prices,
-        rebalance_signals,
+        rebalance_weights,
         initial_capital,
         cash,
         trading_days_per_year,
         max_position_weight,
+        transaction_cost_bps,
     )
     results.to_csv(output_dir / SENSITIVITY_CSV_NAME, index=False)
     plot_sensitivity_heatmap(
