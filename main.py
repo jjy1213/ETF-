@@ -47,8 +47,17 @@ def calculate_moving_average(prices: pd.DataFrame, window_days: int) -> pd.DataF
 
 
 def get_month_end_trading_days(prices: pd.DataFrame) -> pd.DatetimeIndex:
-    """找出每个月的最后一个交易日。"""
-    return prices.groupby(prices.index.to_period("M")).tail(1).index
+    """找出每个月的最后一个交易日，并避免把未结束的当月误判为月末。"""
+    months = prices.index.to_period("M")
+    is_month_end = months[:-1] != months[1:]
+    month_end_dates = list(prices.index[:-1][is_month_end])
+
+    # 如果最后一条数据本身就是自然月最后一个工作日，也可以作为月末调仓日。
+    last_date = prices.index[-1]
+    if pd.offsets.BMonthEnd().is_on_offset(last_date):
+        month_end_dates.append(last_date)
+
+    return pd.DatetimeIndex(month_end_dates)
 
 
 def generate_rebalance_signals(
@@ -196,6 +205,11 @@ def save_outputs(
 ) -> None:
     """保存研究结果，方便后续检查和复盘。"""
     OUTPUT_DIR.mkdir(exist_ok=True)
+
+    # outputs 是运行产物目录，先清掉旧产物，避免上次运行的文件造成误解。
+    for old_file in OUTPUT_DIR.glob("*"):
+        if old_file.is_file():
+            old_file.unlink()
 
     prices.to_csv(OUTPUT_DIR / "prices.csv")
     moving_average.to_csv(OUTPUT_DIR / "moving_average.csv")
