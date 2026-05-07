@@ -2,11 +2,17 @@
 
 ## Cursor Cloud specific instructions
 
-This is a README-only showcase repository ("Built with AI Studio") that links to [Google AI Studio](https://aistudio.google.com/apps). It contains no application code, services, dependencies, tests, or build system.
+Python CLI tool for ETF monthly 200-day moving average backtesting (QQQ/TLT). See `README.md` for strategy logic and project structure.
 
-- **No dependencies** to install
-- **No services** to run
-- **No tests** to execute
-- **No lint/build** steps
+### Quick reference
 
-If application code is added in the future, update this file with relevant development instructions.
+- **Install deps:** `pip install -r requirements.txt`
+- **Run:** `python3 main.py` — downloads live data from Yahoo Finance, runs backtest, prints results, and writes CSV/PNG to `outputs/`.
+- **Python ≥ 3.10** required (uses `str | None` union syntax).
+- **No tests, no linter, no build system** in the current codebase.
+
+### Caveats
+
+- Requires internet access to Yahoo Finance (`query1.finance.yahoo.com`). Will raise `ValueError` if data download fails.
+- `matplotlib` uses the non-interactive `Agg` backend by default in headless environments — no display needed.
+- The `outputs/` directory is created automatically and old files are wiped on each run.
