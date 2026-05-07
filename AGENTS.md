@@ -13,6 +13,6 @@ Python CLI tool for ETF monthly 200-day moving average backtesting (QQQ/TLT). Se
 
 ### Caveats
 
-- Data download tries Yahoo Finance first, then Stooq CSV, then `outputs/prices.csv` as a local cache.
+- Data download tries Yahoo Finance first, then `outputs/prices.csv` as a local cache, then bundled `sample_data/prices.csv`.
 - `matplotlib` uses the non-interactive `Agg` backend by default in headless environments — no display needed.
 - The `outputs/` directory is created automatically and old files are wiped on each run.

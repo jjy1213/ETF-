@@ -4,6 +4,9 @@ import pandas as pd
 import yfinance as yf
 
 
+SAMPLE_PRICE_DATA_PATH = Path(__file__).resolve().parent / "sample_data" / "prices.csv"
+
+
 class PriceDownloadError(RuntimeError):
     """价格数据下载失败。"""
 
@@ -47,38 +50,6 @@ def download_yahoo_price_data(
     return normalize_price_data(close_prices, tickers)
 
 
-def format_stooq_date(value: str | None) -> str:
-    """把日期转换为 Stooq CSV 接口需要的 YYYYMMDD。"""
-    if value is None:
-        return pd.Timestamp.today().strftime("%Y%m%d")
-    return pd.Timestamp(value).strftime("%Y%m%d")
-
-
-def download_stooq_price_data(
-    tickers: list[str],
-    start: str,
-    end: str | None = None,
-) -> pd.DataFrame:
-    """使用 Stooq CSV 接口下载 ETF 收盘价，作为 Yahoo 限流时的备用源。"""
-    start_date = format_stooq_date(start)
-    end_date = format_stooq_date(end)
-    price_series: list[pd.Series] = []
-
-    for ticker in tickers:
-        symbol = f"{ticker.lower()}.us"
-        url = f"https://stooq.com/q/d/l/?s={symbol}&d1={start_date}&d2={end_date}&i=d"
-        data = pd.read_csv(url, parse_dates=["Date"])
-
-        if data.empty or "Close" not in data:
-            raise PriceDownloadError(f"Stooq 返回空数据: {ticker}")
-
-        ticker_prices = data.set_index("Date")["Close"].rename(ticker)
-        price_series.append(ticker_prices)
-
-    prices = pd.concat(price_series, axis=1).sort_index()
-    return normalize_price_data(prices, tickers)
-
-
 def load_cached_price_data(
     cache_path: Path,
     tickers: list[str],
@@ -98,25 +69,30 @@ def load_cached_price_data(
     return normalize_price_data(prices, tickers)
 
 
+def load_bundled_sample_price_data(
+    tickers: list[str],
+    start: str,
+    end: str | None = None,
+) -> pd.DataFrame:
+    """读取仓库内置样例价格数据，保证离线或限流时仍可运行。"""
+    return load_cached_price_data(SAMPLE_PRICE_DATA_PATH, tickers, start, end)
+
+
 def download_price_data(
     tickers: list[str],
     start: str,
     end: str | None = None,
     cache_path: Path | None = None,
 ) -> pd.DataFrame:
-    """下载价格数据：优先 Yahoo，失败后尝试 Stooq，最后尝试本地缓存。"""
+    """下载价格数据：优先 Yahoo，失败后尝试本地缓存和内置样例数据。"""
     errors: list[str] = []
 
-    for source_name, downloader in (
-        ("Yahoo Finance", download_yahoo_price_data),
-        ("Stooq", download_stooq_price_data),
-    ):
-        try:
-            prices = downloader(tickers, start, end)
-            print(f"价格数据来源: {source_name}")
-            return prices
-        except Exception as error:
-            errors.append(f"{source_name}: {error}")
+    try:
+        prices = download_yahoo_price_data(tickers, start, end)
+        print("价格数据来源: Yahoo Finance")
+        return prices
+    except Exception as error:
+        errors.append(f"Yahoo Finance: {error}")
 
     if cache_path is not None:
         try:
@@ -126,8 +102,15 @@ def download_price_data(
         except Exception as error:
             errors.append(f"本地缓存: {error}")
 
+    try:
+        prices = load_bundled_sample_price_data(tickers, start, end)
+        print(f"价格数据来源: 内置样例数据 {SAMPLE_PRICE_DATA_PATH}")
+        return prices
+    except Exception as error:
+        errors.append(f"内置样例数据: {error}")
+
     detail = "；".join(errors)
-    raise ValueError(f"没有下载到数据，也没有可用缓存。失败原因：{detail}")
+    raise ValueError(f"没有下载到数据，也没有可用的本地数据。失败原因：{detail}")
 
 
 def save_outputs(

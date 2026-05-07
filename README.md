@@ -14,6 +14,8 @@
 ├── report.py            # 报告模块：对比策略与 QQQ 买入持有
 ├── requirements.txt     # Python 依赖列表
 ├── README.md            # 项目说明文档
+├── sample_data/         # 内置样例价格数据，供限流或离线时备用
+│   └── prices.csv
 └── outputs/             # 运行 main.py 后自动生成，保存研究结果
     ├── prices.csv
     ├── moving_average.csv
@@ -37,6 +39,7 @@
 - `report.py`：负责对比策略与 QQQ 买入持有的年化收益率、最大回撤、Sharpe Ratio、月度胜率和盈亏比。
 - `requirements.txt`：记录运行项目所需的第三方库，包括 `yfinance`、`pandas` 和 `matplotlib`。
 - `README.md`：说明项目目标、目录结构、运行方式和输出结果。
+- `sample_data/prices.csv`：内置 QQQ/TLT 样例价格数据，供在线数据源失败时备用。
 - `outputs/prices.csv`：保存 QQQ 和 TLT 的历史复权收盘价。
 - `outputs/moving_average.csv`：保存 QQQ 和 TLT 的 200 日均线。
 - `outputs/rebalance_signals.csv`：保存每月最后一个交易日生成的调仓信号。
@@ -69,4 +72,4 @@ python3 main.py
 
 ## 数据源容错
 
-项目优先使用 Yahoo Finance 下载价格数据。如果 Yahoo Finance 因限流或网络问题返回空数据，程序会自动尝试 Stooq CSV 备用数据源；如果在线数据源都失败，并且本地已有 `outputs/prices.csv`，程序会读取本地缓存继续运行。
+项目优先使用 Yahoo Finance 下载价格数据。如果 Yahoo Finance 因限流或网络问题返回空数据，程序会先尝试读取本地 `outputs/prices.csv` 缓存；如果缓存不存在，则使用仓库内置的 `sample_data/prices.csv` 样例数据继续运行。
