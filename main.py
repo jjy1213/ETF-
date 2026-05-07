@@ -50,12 +50,13 @@ def generate_signals(momentum: pd.DataFrame) -> pd.Series:
     1. 比较 QQQ 和 TLT 的 60 日动量，选择动量更强的 ETF。
     2. 如果两个 ETF 的动量都小于等于 0，则空仓，记为 CASH。
     """
-    best_asset = momentum.idxmax(axis=1)
-    best_momentum = momentum.max(axis=1)
+    valid_momentum = momentum.dropna(how="all")
+    best_asset = valid_momentum.idxmax(axis=1)
+    best_momentum = valid_momentum.max(axis=1)
 
     signals = best_asset.where(best_momentum > 0, "CASH")
     signals.name = "signal"
-    return signals.dropna()
+    return signals
 
 
 def calculate_strategy_equity(
