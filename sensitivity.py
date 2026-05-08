@@ -7,7 +7,10 @@ matplotlib.use("Agg")
 import matplotlib.pyplot as plt
 import pandas as pd
 
-from backtest import calculate_rotation_strategy_equity
+from backtest import (
+    calculate_rotation_strategy_equity,
+    calculate_volatility_managed_strategy_equity,
+)
 from metrics import calculate_performance_summary
 
 
@@ -20,7 +23,7 @@ DRAWDOWN_HEATMAP_NAME = "volatility_sensitivity_drawdown.png"
 
 def run_volatility_sensitivity(
     prices: pd.DataFrame,
-    rebalance_weights: pd.DataFrame,
+    rebalance_data: pd.DataFrame | pd.Series,
     initial_capital: float,
     cash: str,
     trading_days_per_year: int,
@@ -32,17 +35,29 @@ def run_volatility_sensitivity(
 
     for volatility_lookback_days in VOLATILITY_LOOKBACK_GRID:
         for target_volatility in TARGET_VOLATILITY_GRID:
-            strategy_result = calculate_rotation_strategy_equity(
-                prices,
-                rebalance_weights,
-                initial_capital,
-                cash,
-                target_volatility,
-                volatility_lookback_days,
-                trading_days_per_year,
-                max_position_weight,
-                transaction_cost_bps,
-            )
+            if isinstance(rebalance_data, pd.Series):
+                strategy_result = calculate_volatility_managed_strategy_equity(
+                    prices,
+                    rebalance_data,
+                    initial_capital,
+                    cash,
+                    target_volatility,
+                    volatility_lookback_days,
+                    trading_days_per_year,
+                    max_position_weight,
+                )
+            else:
+                strategy_result = calculate_rotation_strategy_equity(
+                    prices,
+                    rebalance_data,
+                    initial_capital,
+                    cash,
+                    target_volatility,
+                    volatility_lookback_days,
+                    trading_days_per_year,
+                    max_position_weight,
+                    transaction_cost_bps,
+                )
             summary = calculate_performance_summary(
                 strategy_result,
                 initial_capital,
@@ -108,7 +123,7 @@ def plot_sensitivity_heatmap(
 
 def save_volatility_sensitivity(
     prices: pd.DataFrame,
-    rebalance_weights: pd.DataFrame,
+    rebalance_data: pd.DataFrame | pd.Series,
     output_dir: Path,
     initial_capital: float,
     cash: str,
@@ -120,7 +135,7 @@ def save_volatility_sensitivity(
     output_dir.mkdir(exist_ok=True)
     results = run_volatility_sensitivity(
         prices,
-        rebalance_weights,
+        rebalance_data,
         initial_capital,
         cash,
         trading_days_per_year,
