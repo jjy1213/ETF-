@@ -1,7 +1,7 @@
 from pathlib import Path
 
 from backtest import (
-    calculate_rotation_strategy_equity,
+    calculate_strategy_equity,
     plot_comparison_equity_curve,
 )
 from data import download_price_data, save_outputs
@@ -11,21 +11,22 @@ from metrics import calculate_annual_returns, calculate_performance_summary, pri
 from report import build_buy_hold_series, generate_report
 from sensitivity import save_volatility_sensitivity
 from strategy import (
-    calculate_momentum,
+    calculate_annual_holding_distribution,
     calculate_moving_average,
-    generate_rotation_rebalance_weights,
+    generate_rebalance_signals,
 )
 
 
 # 策略参数：保持集中，方便初学者修改
-TICKERS = ["SPY", "QQQ", "IWM", "EFA", "EEM", "TLT", "GLD"]
+TICKERS = ["QQQ", "SPY", "TLT"]
 RISK_ASSET = "QQQ"
+COMPARISON_ASSET = "SPY"
+DEFENSIVE_ASSET = "TLT"
 CASH = "CASH"
 START_DATE = "2010-01-01"
 END_DATE = None  # None 表示下载到最近一个交易日
 MOVING_AVERAGE_DAYS = 200
-MOMENTUM_LOOKBACK_DAYS = 126
-ROTATION_TOP_N = 3
+MOMENTUM_LOOKBACK_DAYS = 60
 TARGET_VOLATILITY = 0.10
 VOLATILITY_LOOKBACK_DAYS = 20
 MAX_POSITION_WEIGHT = 1.0
@@ -46,25 +47,28 @@ def main() -> None:
         cache_path=OUTPUT_DIR / "prices.csv",
     )
     moving_average = calculate_moving_average(prices, MOVING_AVERAGE_DAYS)
-    momentum = calculate_momentum(prices, MOMENTUM_LOOKBACK_DAYS)
-    rebalance_weights = generate_rotation_rebalance_weights(
+    rebalance_signals = generate_rebalance_signals(
         prices,
         moving_average,
-        momentum,
-        ROTATION_TOP_N,
+        RISK_ASSET,
+        DEFENSIVE_ASSET,
+        CASH,
+        comparison_asset=COMPARISON_ASSET,
+        momentum_lookback_days=MOMENTUM_LOOKBACK_DAYS,
     )
-    strategy_result = calculate_rotation_strategy_equity(
+    strategy_result = calculate_strategy_equity(
         prices,
-        rebalance_weights,
+        rebalance_signals,
         INITIAL_CAPITAL,
         CASH,
-        TARGET_VOLATILITY,
-        VOLATILITY_LOOKBACK_DAYS,
-        TRADING_DAYS_PER_YEAR,
-        MAX_POSITION_WEIGHT,
-        TRANSACTION_COST_BPS,
     )
-    annual_returns = calculate_annual_returns(strategy_result, INITIAL_CAPITAL)
+    annual_returns_for_print = calculate_annual_returns(strategy_result, INITIAL_CAPITAL)
+    holding_distribution = calculate_annual_holding_distribution(
+        rebalance_signals,
+        [RISK_ASSET, COMPARISON_ASSET, DEFENSIVE_ASSET],
+        CASH,
+    )
+    annual_returns = annual_returns_for_print.join(holding_distribution, how="left")
     performance_summary = calculate_performance_summary(
         strategy_result,
         INITIAL_CAPITAL,
@@ -75,7 +79,7 @@ def main() -> None:
         OUTPUT_DIR,
         prices,
         moving_average,
-        rebalance_weights,
+        rebalance_signals,
         strategy_result,
         annual_returns,
         performance_summary,
@@ -96,7 +100,7 @@ def main() -> None:
     )
     save_volatility_sensitivity(
         prices,
-        rebalance_weights,
+        rebalance_signals,
         OUTPUT_DIR,
         INITIAL_CAPITAL,
         CASH,
@@ -118,7 +122,7 @@ def main() -> None:
         WALK_FORWARD_MIN_TRAIN_YEARS,
     )
     generate_integrated_report(OUTPUT_DIR)
-    print_summary(str(OUTPUT_DIR.resolve()), annual_returns, performance_summary)
+    print_summary(str(OUTPUT_DIR.resolve()), annual_returns_for_print, performance_summary)
 
 
 if __name__ == "__main__":

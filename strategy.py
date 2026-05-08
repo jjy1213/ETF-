@@ -31,35 +31,86 @@ def generate_rebalance_signals(
     risk_asset: str,
     defensive_asset: str,
     cash: str,
+    comparison_asset: str | None = None,
+    momentum_lookback_days: int = 60,
 ) -> pd.Series:
     """
     在每月最后一个交易日生成调仓信号。
 
     规则：
-    1. 风险资产在 200 日均线上方时，持有风险资产。
-    2. 风险资产低于 200 日均线时，切换到防御资产。
-    3. 如果防御资产也低于 200 日均线，则持有现金。
+    1. 默认保持原 QQQ/TLT 200MA 逻辑。
+    2. 如果传入 comparison_asset，则先比较 risk_asset 和 comparison_asset
+       的 60 日动量，选择更强的权益资产作为候选。
+    3. 候选权益资产高于 200MA 时持有它，否则检查防御资产。
+    4. 如果防御资产也低于 200MA，则持有现金。
     """
     month_end_dates = get_month_end_trading_days(prices)
     signals = pd.Series(index=month_end_dates, dtype="object", name="rebalance_signal")
+    momentum = calculate_momentum(prices, momentum_lookback_days)
 
     for date in month_end_dates:
-        risk_price = prices.loc[date, risk_asset]
-        risk_ma = moving_average.loc[date, risk_asset]
+        # 新增 SPY 候选：每月末先比较 QQQ 与 SPY 的 60 日动量。
+        if comparison_asset is not None:
+            risk_momentum = momentum.loc[date, risk_asset]
+            comparison_momentum = momentum.loc[date, comparison_asset]
+
+            if pd.isna(risk_momentum) or pd.isna(comparison_momentum):
+                signals.loc[date] = cash
+                continue
+
+            candidate_asset = (
+                risk_asset if risk_momentum >= comparison_momentum else comparison_asset
+            )
+        else:
+            candidate_asset = risk_asset
+
+        candidate_price = prices.loc[date, candidate_asset]
+        candidate_ma = moving_average.loc[date, candidate_asset]
         defensive_price = prices.loc[date, defensive_asset]
         defensive_ma = moving_average.loc[date, defensive_asset]
 
         # 200 日均线数据不足时，保守地保持现金。
-        if pd.isna(risk_ma):
+        if pd.isna(candidate_ma):
             signals.loc[date] = cash
-        elif risk_price >= risk_ma:
-            signals.loc[date] = risk_asset
+        elif candidate_price >= candidate_ma:
+            signals.loc[date] = candidate_asset
         elif not pd.isna(defensive_ma) and defensive_price >= defensive_ma:
             signals.loc[date] = defensive_asset
         else:
             signals.loc[date] = cash
 
     return signals
+
+
+def calculate_annual_holding_distribution(
+    rebalance_signals: pd.Series,
+    assets: list[str],
+    cash: str,
+) -> pd.DataFrame:
+    """统计每年各持仓信号出现的月数，供年度收益表展示持仓分布。"""
+    rows: list[dict[str, int | str]] = []
+
+    for year, yearly_signals in rebalance_signals.groupby(rebalance_signals.index.year):
+        counts = yearly_signals.value_counts()
+        distribution = {
+            asset: int(counts.get(asset, 0))
+            for asset in [*assets, cash]
+        }
+        rows.append(
+            {
+                "year": int(year),
+                "holding_distribution": " / ".join(
+                    f"{asset}:{months}个月" for asset, months in distribution.items()
+                ),
+            }
+        )
+
+    if not rows:
+        return pd.DataFrame(columns=["holding_distribution"])
+
+    distribution_df = pd.DataFrame(rows).set_index("year")
+    distribution_df.index.name = "year"
+    return distribution_df
 
 
 def generate_rotation_rebalance_weights(
