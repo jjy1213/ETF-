@@ -34,6 +34,7 @@
     ├── volatility_sensitivity.csv
     ├── volatility_sensitivity_sharpe.png
     ├── volatility_sensitivity_drawdown.png
+    ├── integrated_report.html
     └── equity_curve.png
 ```
 
@@ -65,6 +66,7 @@
 - `outputs/volatility_sensitivity.csv`：保存目标波动率和波动率回看期的敏感性分析明细。
 - `outputs/volatility_sensitivity_sharpe.png`：保存 Sharpe Ratio 参数敏感性热力图。
 - `outputs/volatility_sensitivity_drawdown.png`：保存最大回撤参数敏感性热力图。
+- `outputs/integrated_report.html`：保存可直接用浏览器打开的整合 HTML 投资策略分析报告。
 - `outputs/equity_curve.png`：保存策略与 QQQ 买入持有的资金曲线对比图。
 
 ## 策略逻辑
@@ -86,7 +88,7 @@ python3 -m pip install -r requirements.txt
 python3 main.py
 ```
 
-运行后，终端会输出最新持仓信号、最终资金曲线值、累计收益率、最大回撤、Sharpe Ratio 和每年收益率，结果文件会保存到 `outputs/` 目录，并自动生成策略 vs QQQ 买入持有的对比报告。
+运行后，终端会输出最新持仓信号、最终资金曲线值、累计收益率、最大回撤、Sharpe Ratio 和每年收益率，结果文件会保存到 `outputs/` 目录，并自动生成策略 vs QQQ 买入持有的对比报告和 `outputs/integrated_report.html` 整合 HTML 报告。
 
 ## 数据源容错
 
