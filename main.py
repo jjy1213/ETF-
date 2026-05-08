@@ -6,6 +6,7 @@ from backtest import (
 )
 from data import download_price_data, save_outputs
 from diagnostics import save_rolling_sharpe, save_walk_forward_report
+from generate_html_report import generate_integrated_report
 from metrics import calculate_annual_returns, calculate_performance_summary, print_summary
 from report import build_buy_hold_series, generate_report
 from sensitivity import save_volatility_sensitivity
@@ -116,6 +117,7 @@ def main() -> None:
         TRADING_DAYS_PER_YEAR,
         WALK_FORWARD_MIN_TRAIN_YEARS,
     )
+    generate_integrated_report(OUTPUT_DIR)
     print_summary(str(OUTPUT_DIR.resolve()), annual_returns, performance_summary)
 
 
